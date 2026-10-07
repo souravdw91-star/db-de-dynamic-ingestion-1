@@ -1,0 +1,32 @@
+I want to build a databrics projects that dynamically ingest the data from the source systems (in this case gihub is the source), then process the data in the medallion architechture(Bronze->Silver->Gold)
+Bronze Layer : Store the raw data in the source format, structure & size
+Silver Layer : Stores the filtered & good quality data( Data that is passed through the quality checks) in silver_db in proper schema, in delta table
+Gold Layer: Delta format tables in  gold_db, Data models consisting of Facts & Dimention based on the business requirements
+RPT Layer: Delta format tables in rpt_db, get the data from facts & dimentions from the Gold layer & based on the business reporting needs with proper transformations & aggregation a table or view is created.
+The source Data is avaiable in the location below:
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_customers.csv
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_items.csv
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_orders.csv
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_products.csv
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_stores.csv
+https://raw.githubusercontent.com/dbt-labs/jaffle-shop/refs/heads/main/seeds/jaffle-data/raw_supplies.csv
+
+Project Structure:
+ingestion folder: it carries the ingestion pipeline ipynb files to be able to execute in databricks environemnt.
+	ingestion.ipnyb: simple ingestion pyspark program to ingest the data from the source location to bronze location, understand the schema from the incoming file naming format from an bronze_db:ingestion_config table & validate the data using pydantic framework & process the data to silver_db respective tables. The process is schemaless, so it should be able to process all the files in a single program.
+	ingestion_config table : (data_entry_seq_no,source_location,bronze_location,file_name_pattern,target_format,target_table_name,target_table_db,source_column_name,target_column_name,source_datatype,target_datatype,target_data_pattern,col_seq_no,data_entry_date) is the driver of the ingestion job that give the context of the source ingestion and data quality checks. finally makes the entries in the audit table.
+	bronze_db: ingestion_audit table to keep the job run stats with count of recrods for the success & failures
+	bronze_db: quarantine_<dataset(customers> tables, these tables are to be created as per the datasets to store the rejected data with error messages to understand the data regections.
+	ingestion_orchestartion.ipynb : since ingestion is a standalone job to look for a particular source file at a time the orchestartion job helps to provide the proper orchestration & looping mechanism for multiple source files.
+aggregation folder: it carries the sqls to populate gold tables & rpt tables.
+source schema:
+table name,S3 URI,Schema
+raw_customers,s3://dbt-tutorial-public/long_term_dataset/raw_customers.csv,(id text, name text)
+raw_orders,s3://dbt-tutorial-public/long_term_dataset/raw_orders.csv,(id text, customer text, ordered_at datetime, store_id text, subtotal int, tax_paid int, order_total int)
+raw_order_items,s3://dbt-tutorial-public/long_term_dataset/raw_order_items.csv,(id text, order_id text, sku text)
+raw_products,s3://dbt-tutorial-public/long_term_dataset/raw_products.csv,(sku text, name text, type text, price int, description text)
+raw_supplies,s3://dbt-tutorial-public/long_term_dataset/raw_supplies.csv,(id text, name text, cost int, perishable boolean, sku text)
+raw_stores,s3://dbt-tutorial-public/long_term_dataset/raw_stores.csv,(id text, name text, opened_at datetime, tax_rate float)
+
+The intent of the project is to keep it simple & scalable, make the understanding much broader on dynamic ingestion. 
+Please create the ipnyb files & datamodels as per the dataset and come up with a reporting table requirement to fit with the data & datamodel.
